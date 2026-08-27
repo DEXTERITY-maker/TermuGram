@@ -63,10 +63,19 @@ def check(cond, msg):
 def clean_text():
     return re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", buf.decode(errors="replace"))
 
-# 1. Меню -> Инфо об аккаунте (индекс 0, Enter)
-check(read_until(["главное меню"]), "меню открылось")
+# 1. Запуск: меню (или уведомление об обновлении -> Enter)
+check(read_until(["главное меню", "Доступно обновление TermuGram!"]), "меню или уведомление об обновлении")
 settle()
-check("Инфо об аккаунте".encode() in buf, "пункт «Инфо об аккаунте» есть")
+t = clean_text()
+if "Доступно обновление TermuGram!" in t:
+    check(True, "уведомление об обновлении показано")
+    check("TermuGram --update" in t, "в уведомлении есть команда обновления")
+    check(bool(re.search(r"\d+\.\d+\.\d+", t)), "в уведомлении есть версии")
+    send("\n")  # Enter -> в меню
+    check(read_until(["главное меню"]), "после уведомления открылось меню")
+    settle()
+    t = clean_text()
+check("Инфо об аккаунте" in t, "пункт «Инфо об аккаунте» есть")
 send("\n")
 # 2. Инфо: ждём данные аккаунта
 check(read_until(["Информация об аккаунте"]), "экран информации")

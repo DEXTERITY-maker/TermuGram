@@ -145,6 +145,8 @@ mkdir -p "$INSTALL_DIR"
 cp "$SRC_DIR/demo_installer.py" "$SRC_DIR/installer.py" \
    "$SRC_DIR/main_menu.py" "$SRC_DIR/version.py" \
    "$SRC_DIR/requirements.txt" "$SRC_DIR/TermuGram" "$INSTALL_DIR/"
+# Путь к репозиторию — для команды обновления TermuGram --update
+echo "$SRC_DIR" > "$INSTALL_DIR/repo_path"
 
 # ---------------------------------------------------------------------------
 # [6/6] Команда в PATH

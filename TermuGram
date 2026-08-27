@@ -36,6 +36,7 @@ case "$1" in
     echo "  TermuGram --menu       главное меню (инфо, диалоги, медиа, отправка, фидбек, бот)"
     echo "  TermuGram --setup      заново пройти установку/вход"
     echo "  TermuGram --demo       показать демо интерфейса"
+    echo "  TermuGram --update     обновить до последней версии"
     echo "  TermuGram --version    версия"
     echo "  TermuGram --help       эта справка"
     ;;
@@ -50,6 +51,22 @@ case "$1" in
   --menu)
     shift
     exec python3 main_menu.py "$@"
+    ;;
+  --update|-u)
+    if [ ! -f "$INSTALL_DIR/repo_path" ]; then
+      echo "TermuGram: не знаю, где лежит репозиторий."
+      echo "Обновите вручную:  cd TermuGram && git pull && bash install.sh"
+      exit 1
+    fi
+    REPO=$(cat "$INSTALL_DIR/repo_path")
+    if [ ! -d "$REPO/.git" ]; then
+      echo "TermuGram: папка репозитория не найдена: $REPO"
+      echo "Обновите вручную:  cd TermuGram && git pull && bash install.sh"
+      exit 1
+    fi
+    echo "Обновляем TermuGram из $REPO ..."
+    git -C "$REPO" pull || exit 1
+    bash "$REPO/install.sh"
     ;;
   *)
     if [ ! -f config.json ] && [ ! -f tgtool_session.session ]; then

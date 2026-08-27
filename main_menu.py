@@ -129,6 +129,11 @@ MENU = {
         "bot_send_who": "Куда отправить? (username или ID чата/канала)",
         "bot_send_who_example": "пример: @my_channel или -1001234567890",
         "press_enter": "Нажмите Enter, чтобы продолжить",
+        "up_title": "Доступно обновление TermuGram!",
+        "up_current": "У вас установлена:",
+        "up_new": "Доступная версия:",
+        "up_cmd_title": "Обновить одной командой:",
+        "up_cmd_manual": "или вручную: cd TermuGram && git pull && bash install.sh",
     },
     "en": {
         "title": "TermuGram — main menu",
@@ -226,6 +231,11 @@ MENU = {
         "bot_send_who": "Send to? (username or chat/channel ID)",
         "bot_send_who_example": "e.g. @my_channel or -1001234567890",
         "press_enter": "Press Enter to continue",
+        "up_title": "TermuGram update available!",
+        "up_current": "You have:",
+        "up_new": "Available version:",
+        "up_cmd_title": "Update with one command:",
+        "up_cmd_manual": "or manually: cd TermuGram && git pull && bash install.sh",
     },
     "uk": {
         "title": "TermuGram — головне меню",
@@ -323,6 +333,11 @@ MENU = {
         "bot_send_who": "Куди надіслати? (username або ID чату/каналу)",
         "bot_send_who_example": "приклад: @my_channel або -1001234567890",
         "press_enter": "Натисніть Enter, щоб продовжити",
+        "up_title": "Доступне оновлення TermuGram!",
+        "up_current": "У вас встановлено:",
+        "up_new": "Доступна версія:",
+        "up_cmd_title": "Оновити однією командою:",
+        "up_cmd_manual": "або вручну: cd TermuGram && git pull && bash install.sh",
     },
 }
 
@@ -360,6 +375,63 @@ def fmt_date(dt):
         return dt.strftime("%d.%m %H:%M")
     except Exception:
         return ""
+
+
+def ver_tuple(v):
+    """Версия '0.7.0' -> (0, 7, 0). Мусор в хвосте отбрасывается."""
+    s = str(v).strip()
+    if s[:1].lower() == "v":  # "v1.2.3" -> "1.2.3"
+        s = s[1:]
+    out = []
+    for part in s.split("."):
+        num = ""
+        for ch in part:
+            if ch.isdigit():
+                num += ch
+            else:
+                break
+        out.append(int(num) if num else 0)
+    while len(out) < 3:
+        out.append(0)
+    return tuple(out[:3])
+
+
+def fetch_latest_version():
+    """Последняя версия TermuGram с GitHub API. None — нет сети/ошибка."""
+    import json
+    import urllib.request
+    try:
+        req = urllib.request.Request(
+            "https://api.github.com/repos/DEXTERITY-maker/TermuGram/releases/latest",
+            headers={
+                "User-Agent": "TermuGram/" + VERSION,
+                "Accept": "application/vnd.github+json",
+            },
+        )
+        with urllib.request.urlopen(req, timeout=5) as r:
+            data = json.loads(r.read().decode("utf-8"))
+        tag = (data.get("tag_name") or "").strip()
+        return tag[1:] if tag.startswith("v") else tag
+    except Exception:
+        return None
+
+
+def show_update_notice(theme, S, latest):
+    """Экран «вышла новая версия» с командой обновления."""
+    cls()
+    print()
+    print(paint(theme, "accent", "📢 " + S["up_title"], bold=True))
+    print()
+    print("  " + paint(theme, "primary", S["up_current"] + "  ", bold=True)
+          + paint(theme, "fg", VERSION))
+    print("  " + paint(theme, "primary", S["up_new"] + "  ", bold=True)
+          + paint(theme, "ok", latest, bold=True))
+    print()
+    print("  " + paint(theme, "primary", S["up_cmd_title"], bold=True))
+    print("  " + paint(theme, "accent", "    TermuGram --update", bold=True))
+    print(DIM + "    " + S["up_cmd_manual"] + RESET)
+    print()
+    wait_enter(theme, S["press_enter"])
 
 
 def ask_multiline(theme, prompt, hint=None):
@@ -963,9 +1035,14 @@ def main():
             client.disconnect()
             return 1
 
+        # Проверка обновлений (молча пропускается, если нет сети/ошибка)
+        latest = fetch_latest_version()
+        if latest and ver_tuple(latest) > ver_tuple(VERSION):
+            show_update_notice(theme, S, latest)
+
         while True:
             idx = select_menu(
-                S["title"],
+                S["title"] + "  (v" + VERSION + ")",
                 [S["item_info"], S["item_dialogs"], S["item_dl"], S["item_send"], S["item_feedback"], S["item_bot"], S["item_exit"]],
                 theme,
             )
