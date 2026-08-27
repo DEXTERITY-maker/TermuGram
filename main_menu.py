@@ -135,6 +135,18 @@ MENU = {
         "up_new": "Доступная версия:",
         "up_cmd_title": "Обновить одной командой:",
         "up_cmd_manual": "или вручную: cd TermuGram && git pull && bash install.sh",
+        "item_update": "Проверить обновления",
+        "upd_checking": "Проверяем наличие обновлений",
+        "upd_check_fail": "Не удалось проверить. Нет связи с GitHub или сервис недоступен.",
+        "upd_latest": "У вас уже последняя версия {v}.",
+        "upd_action": "Обновить TermuGram сейчас?",
+        "upd_yes": "Обновить сейчас",
+        "upd_no": "Отмена",
+        "upd_running": "Обновляем TermuGram",
+        "upd_ok": "Готово! Обновлено до версии {v}.",
+        "upd_restart": "Перезапустите TermuGram, чтобы использовать новую версию.",
+        "upd_err": "Не удалось обновить: {msg}",
+        "upd_manual": "Обновить вручную: cd TermuGram && git pull && bash install.sh",
     },
     "en": {
         "title": "TermuGram — main menu",
@@ -238,6 +250,18 @@ MENU = {
         "up_new": "Available version:",
         "up_cmd_title": "Update with one command:",
         "up_cmd_manual": "or manually: cd TermuGram && git pull && bash install.sh",
+        "item_update": "Check for updates",
+        "upd_checking": "Checking for updates",
+        "upd_check_fail": "Could not check. No connection to GitHub or the service is down.",
+        "upd_latest": "You already have the latest version {v}.",
+        "upd_action": "Update TermuGram now?",
+        "upd_yes": "Update now",
+        "upd_no": "Cancel",
+        "upd_running": "Updating TermuGram",
+        "upd_ok": "Done! Updated to version {v}.",
+        "upd_restart": "Restart TermuGram to use the new version.",
+        "upd_err": "Update failed: {msg}",
+        "upd_manual": "Update manually: cd TermuGram && git pull && bash install.sh",
     },
     "uk": {
         "title": "TermuGram — головне меню",
@@ -341,6 +365,18 @@ MENU = {
         "up_new": "Доступна версія:",
         "up_cmd_title": "Оновити однією командою:",
         "up_cmd_manual": "або вручну: cd TermuGram && git pull && bash install.sh",
+        "item_update": "Перевірити оновлення",
+        "upd_checking": "Перевіряємо наявність оновлень",
+        "upd_check_fail": "Не вдалося перевірити. Немає зв'язку з GitHub або сервіс недоступний.",
+        "upd_latest": "У вас вже остання версія {v}.",
+        "upd_action": "Оновити TermuGram зараз?",
+        "upd_yes": "Оновити зараз",
+        "upd_no": "Скасувати",
+        "upd_running": "Оновлюємо TermuGram",
+        "upd_ok": "Готово! Оновлено до версії {v}.",
+        "upd_restart": "Перезапустіть TermuGram, щоб використовувати нову версію.",
+        "upd_err": "Не вдалося оновити: {msg}",
+        "upd_manual": "Оновити вручну: cd TermuGram && git pull && bash install.sh",
     },
 }
 
@@ -470,6 +506,106 @@ def menu_banner(theme, S):
         line("by Nyvella", dim=True),
         box_b,
     ])
+
+
+def installed_version():
+    """Версия из version.py в папке приложения (после обновления)."""
+    try:
+        with open(os.path.join(APP_DIR, "version.py"), encoding="utf-8") as f:
+            m = re.search(r'VERSION\s*=\s*"([^"]+)"', f.read())
+            return m.group(1) if m else "?"
+    except Exception:
+        return "?"
+
+
+def run_update(theme, S):
+    """Обновление в процессе: git pull в репозитории + переустановка install.sh."""
+    import subprocess
+    repo = ""
+    try:
+        with open(os.path.join(APP_DIR, "repo_path"), encoding="utf-8") as f:
+            repo = f.read().strip()
+    except Exception:
+        repo = ""
+    if not os.path.isdir(os.path.join(repo, ".git")):
+        cls()
+        print()
+        print(paint(theme, "err", "  ✗ " + S["upd_err"].format(msg=S["upd_manual"])))
+        print()
+        wait_enter(theme, S["press_enter"])
+        return
+    cls()
+    print()
+    print(paint(theme, "primary", S["upd_running"] + "…", bold=True))
+    try:
+        r = subprocess.run(["git", "-C", repo, "pull"], capture_output=True, text=True, timeout=90)
+        if r.returncode != 0:
+            print()
+            print(paint(theme, "err", "  ✗ " + S["upd_err"].format(msg=(r.stderr or r.stdout).strip())))
+            print()
+            wait_enter(theme, S["press_enter"])
+            return
+        r2 = subprocess.run(["bash", os.path.join(repo, "install.sh")], capture_output=True, text=True, timeout=180)
+        if r2.returncode != 0:
+            print()
+            print(paint(theme, "err", "  ✗ " + S["upd_err"].format(msg=(r2.stderr or r2.stdout).strip())))
+            print()
+            wait_enter(theme, S["press_enter"])
+            return
+        print()
+        print(paint(theme, "ok", "  ✓ " + S["upd_ok"].format(v=installed_version()), bold=True))
+        print("  " + DIM + S["upd_restart"] + RESET)
+        print()
+        wait_enter(theme, S["press_enter"])
+    except subprocess.TimeoutExpired:
+        print()
+        print(paint(theme, "err", "  ✗ " + S["upd_err"].format(msg="таймаут")))
+        print()
+        wait_enter(theme, S["press_enter"])
+    except Exception as e:
+        print()
+        print(paint(theme, "err", "  ✗ " + S["upd_err"].format(msg=friendly_error(e))))
+        print()
+        wait_enter(theme, S["press_enter"])
+
+
+def check_updates_flow(theme, S):
+    """Пункт меню «Проверить обновления»: ручная проверка + кнопка «обновить»."""
+    cls()
+    print()
+    print(paint(theme, "primary", S["upd_checking"] + "…", bold=True))
+    latest = fetch_latest_version()
+    if not latest:
+        print()
+        print(paint(theme, "warn", "  ! " + S["upd_check_fail"]))
+        print()
+        wait_enter(theme, S["press_enter"])
+        return
+    if ver_tuple(latest) <= ver_tuple(VERSION):
+        cls()
+        print()
+        print(paint(theme, "ok", "  ✓ " + S["upd_latest"].format(v=VERSION), bold=True))
+        print()
+        wait_enter(theme, S["press_enter"])
+        return
+    # Найдена новая версия
+    cls()
+    print()
+    print(paint(theme, "accent", "📢 " + S["up_title"], bold=True))
+    print()
+    print("  " + paint(theme, "primary", S["up_current"] + "  ", bold=True)
+          + paint(theme, "fg", VERSION))
+    print("  " + paint(theme, "primary", S["up_new"] + "  ", bold=True)
+          + paint(theme, "ok", latest, bold=True))
+    print()
+    print("  " + paint(theme, "primary", S["up_cmd_title"], bold=True))
+    print("  " + paint(theme, "accent", "    TermuGram --update", bold=True))
+    print(DIM + "    " + S["up_cmd_manual"] + RESET)
+    print()
+    choice = select_menu(S["upd_action"], [S["upd_yes"], S["upd_no"]], theme)
+    if choice == 1:
+        return
+    run_update(theme, S)
 
 
 def ask_multiline(theme, prompt, hint=None):
@@ -1081,7 +1217,7 @@ def main():
         while True:
             idx = select_menu(
                 menu_banner(theme, S) + "\n\n" + paint(theme, "primary", S["title"], bold=True),
-                [S["item_info"], S["item_dialogs"], S["item_dl"], S["item_send"], S["item_feedback"], S["item_bot"], S["item_exit"]],
+                [S["item_info"], S["item_dialogs"], S["item_dl"], S["item_send"], S["item_feedback"], S["item_bot"], S["item_update"], S["item_exit"]],
                 theme,
             )
             if idx == 0:
@@ -1096,6 +1232,8 @@ def main():
                 feedback_flow(client, theme, S, cfg)
             elif idx == 5:
                 bot_flow(theme, S, cfg)
+            elif idx == 6:
+                check_updates_flow(theme, S)
             else:
                 break
 
