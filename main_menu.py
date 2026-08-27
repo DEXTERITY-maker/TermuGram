@@ -12,6 +12,7 @@ TermuGram — главное меню (основной функционал).
   • Отправка сообщения: себе, из списка диалогов или по username/телефону
 """
 import os
+import platform
 import sys
 
 from demo_installer import (
@@ -19,9 +20,12 @@ from demo_installer import (
 )
 from installer import friendly_error
 
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_FILE = os.path.join(APP_DIR, "config.json")
+
+# Куда приходит обратная связь из меню (username разработчика)
+FEEDBACK_TARGET = "BENJAMIN_ALL"
 
 MENU = {
     "ru": {
@@ -59,6 +63,36 @@ MENU = {
         "sent_ok": "Сообщение отправлено!",
         "err": "Ошибка: {msg}",
         "bye": "До свидания!",
+        "item_feedback": "Обратная связь",
+        "fb_cat_title": "Тип обращения",
+        "fb_bug": "Ошибка (баг)",
+        "fb_idea": "Улучшение / доработка",
+        "fb_other": "Другое",
+        "fb_bug_template": "Опишите ошибку конкретно:\n  1) Что вы делали?\n  2) Что ожидали увидеть?\n  3) Что произошло на самом деле?",
+        "fb_idea_template": "Опишите идею конкретно:\n  1) Что хотите улучшить?\n  2) Как это работает сейчас?\n  3) Ваш вариант решения (если есть)",
+        "fb_other_template": "Опишите ваш вопрос или пожелание подробнее.",
+        "fb_hint": "Пишите конкретно — так быстрее поможем. После текста оставьте пустую строку и нажмите Enter.",
+        "fb_prompt": "Ваше сообщение:",
+        "fb_empty": "Сообщение пустое — ничего не отправлено.",
+        "fb_confirm": "Отправить разработчику?",
+        "fb_sent": "Спасибо! Сообщение ушло разработчику.",
+        "fb_from": "От",
+        "fb_cat": "Категория",
+        "fb_version": "Версия",
+        "fb_lang_theme": "Язык/тема",
+        "fb_device": "Устройство",
+        "fb_block": "Обратная связь TermuGram",
+        "fb_device_ask": "Разрешить прикрепить отчёт об устройстве?",
+        "fb_device_yes": "Да, прикрепить отчёт",
+        "fb_device_no": "Нет, только текст",
+        "fb_device_title": "Отчёт об устройстве",
+        "fb_device_manuf": "Производитель",
+        "fb_device_model": "Модель",
+        "fb_device_android": "Android",
+        "fb_device_build": "Сборка",
+        "fb_device_kernel": "Ядро",
+        "fb_device_arch": "Архитектура",
+        "fb_device_python": "Python",
         "press_enter": "Нажмите Enter, чтобы продолжить",
     },
     "en": {
@@ -96,6 +130,36 @@ MENU = {
         "sent_ok": "Message sent!",
         "err": "Error: {msg}",
         "bye": "Goodbye!",
+        "item_feedback": "Feedback",
+        "fb_cat_title": "Type of request",
+        "fb_bug": "Bug",
+        "fb_idea": "Improvement / idea",
+        "fb_other": "Other",
+        "fb_bug_template": "Describe the bug specifically:\n  1) What were you doing?\n  2) What did you expect?\n  3) What actually happened?",
+        "fb_idea_template": "Describe the idea specifically:\n  1) What do you want to improve?\n  2) How does it work now?\n  3) Your proposed solution (if any)",
+        "fb_other_template": "Describe your question or wish in detail.",
+        "fb_hint": "Be specific — it helps us help you faster. After the text leave an empty line and press Enter.",
+        "fb_prompt": "Your message:",
+        "fb_empty": "Empty message — nothing sent.",
+        "fb_confirm": "Send to the developer?",
+        "fb_sent": "Thanks! The message was sent to the developer.",
+        "fb_from": "From",
+        "fb_cat": "Category",
+        "fb_version": "Version",
+        "fb_lang_theme": "Lang/theme",
+        "fb_device": "Device",
+        "fb_block": "TermuGram feedback",
+        "fb_device_ask": "Allow attaching a device report?",
+        "fb_device_yes": "Yes, attach the report",
+        "fb_device_no": "No, text only",
+        "fb_device_title": "Device report",
+        "fb_device_manuf": "Manufacturer",
+        "fb_device_model": "Model",
+        "fb_device_android": "Android",
+        "fb_device_build": "Build",
+        "fb_device_kernel": "Kernel",
+        "fb_device_arch": "Architecture",
+        "fb_device_python": "Python",
         "press_enter": "Press Enter to continue",
     },
     "uk": {
@@ -133,6 +197,36 @@ MENU = {
         "sent_ok": "Повідомлення надіслано!",
         "err": "Помилка: {msg}",
         "bye": "До побачення!",
+        "item_feedback": "Зворотний зв'язок",
+        "fb_cat_title": "Тип звернення",
+        "fb_bug": "Помилка (баг)",
+        "fb_idea": "Покращення / доопрацювання",
+        "fb_other": "Інше",
+        "fb_bug_template": "Опишіть помилку конкретно:\n  1) Що ви робили?\n  2) Що очікували побачити?\n  3) Що сталося насправді?",
+        "fb_idea_template": "Опишіть ідею конкретно:\n  1) Що хочете покращити?\n  2) Як це працює зараз?\n  3) Ваш варіант рішення (якщо є)",
+        "fb_other_template": "Опишіть ваше питання або побажання детальніше.",
+        "fb_hint": "Пишіть конкретно — так швидше допоможемо. Після тексту залиште порожній рядок і натисніть Enter.",
+        "fb_prompt": "Ваше повідомлення:",
+        "fb_empty": "Порожнє повідомлення — нічого не надіслано.",
+        "fb_confirm": "Надіслати розробнику?",
+        "fb_sent": "Дякуємо! Повідомлення надіслано розробнику.",
+        "fb_from": "Від",
+        "fb_cat": "Категорія",
+        "fb_version": "Версія",
+        "fb_lang_theme": "Мова/тема",
+        "fb_device": "Пристрій",
+        "fb_block": "Зворотний зв'язок TermuGram",
+        "fb_device_ask": "Дозволити прикріпити звіт про пристрій?",
+        "fb_device_yes": "Так, прикріпити звіт",
+        "fb_device_no": "Ні, лише текст",
+        "fb_device_title": "Звіт про пристрій",
+        "fb_device_manuf": "Виробник",
+        "fb_device_model": "Модель",
+        "fb_device_android": "Android",
+        "fb_device_build": "Збірка",
+        "fb_device_kernel": "Ядро",
+        "fb_device_arch": "Архітектура",
+        "fb_device_python": "Python",
         "press_enter": "Натисніть Enter, щоб продовжити",
     },
 }
@@ -171,6 +265,57 @@ def fmt_date(dt):
         return dt.strftime("%d.%m %H:%M")
     except Exception:
         return ""
+
+
+def ask_multiline(theme, prompt, hint=None):
+    """Многострочный ввод: строки до пустой (Enter на пустой строке — конец)."""
+    cls()
+    print()
+    print(paint(theme, "primary", prompt, bold=True))
+    if hint:
+        print(DIM + "   " + hint + RESET)
+    print()
+    lines = []
+    while True:
+        sys.stdout.write(paint(theme, "accent", "> ", bold=True))
+        sys.stdout.flush()
+        line = input().strip()
+        print(RESET, end="")
+        if not line:
+            break
+        lines.append(line)
+    return "\n".join(lines)
+
+
+def getprop(key):
+    """Читает свойство Android (getprop). Вне Android вернёт ''."""
+    try:
+        import subprocess
+        r = subprocess.run(["getprop", key], capture_output=True, text=True, timeout=5)
+        return r.stdout.strip()
+    except Exception:
+        return ""
+
+
+def collect_device_report(S):
+    """Полный отчёт об устройстве: производитель, модель, Android, сборка, ядро."""
+    manuf = getprop("ro.product.manufacturer")
+    model = getprop("ro.product.model")
+    rel = getprop("ro.build.version.release")
+    sdk = getprop("ro.build.version.sdk")
+    build = getprop("ro.build.display.id")
+    android = rel + (" (SDK " + sdk + ")" if sdk else "")
+    report = (
+        "📱 " + S["fb_device_title"] + "\n"
+        + S["fb_device_manuf"] + ": " + (manuf or "—") + "\n"
+        + S["fb_device_model"] + ": " + (model or "—") + "\n"
+        + S["fb_device_android"] + ": " + (android or "—") + "\n"
+        + S["fb_device_build"] + ": " + (build or "—") + "\n"
+        + S["fb_device_kernel"] + ": " + os.uname().release + "\n"
+        + S["fb_device_arch"] + ": " + platform.machine() + "\n"
+        + S["fb_device_python"] + ": " + platform.python_version()
+    )
+    return report, model
 
 
 def show_info(client, theme, S):
@@ -303,6 +448,84 @@ def send_flow(client, theme, S):
     wait_enter(theme, S["press_enter"])
 
 
+def feedback_flow(client, theme, S, cfg):
+    """Обратная связь: категория -> шаблон -> текст -> отправка разработчику."""
+    cats = [S["fb_bug"], S["fb_idea"], S["fb_other"], S["back"]]
+    ci = select_menu(S["fb_cat_title"], cats, theme)
+    if ci == 3:
+        return
+    if ci == 0:
+        cat, template = S["fb_bug"], S["fb_bug_template"]
+    elif ci == 1:
+        cat, template = S["fb_idea"], S["fb_idea_template"]
+    else:
+        cat, template = S["fb_other"], S["fb_other_template"]
+
+    cls()
+    print()
+    print(paint(theme, "primary", S["item_feedback"], bold=True))
+    print()
+    print(DIM + template.replace("\n", "\n  ") + RESET)
+    print()
+    text = ask_multiline(theme, S["fb_prompt"], S["fb_hint"])
+    if not text.strip():
+        cls()
+        print()
+        print(paint(theme, "warn", "  ! " + S["fb_empty"]))
+        print()
+        wait_enter(theme, S["press_enter"])
+        return
+
+    confirm = select_menu(S["fb_confirm"], [S["yes"], S["no"]], theme)
+    if confirm == 1:
+        return
+
+    # Разрешение на отчёт об устройстве (диалог в стиле Android)
+    with_report = select_menu(
+        S["fb_device_ask"], [S["fb_device_yes"], S["fb_device_no"]], theme
+    ) == 0
+
+    me = client.get_me()
+    sender = (me.first_name or "")
+    if me.last_name:
+        sender += " " + me.last_name
+    sender = sender.strip() or "?"
+    if me.username:
+        sender += " (@" + me.username + ")"
+
+    report = ""
+    model = ""
+    if with_report:
+        report, model = collect_device_report(S)
+    device = model if model else platform.platform()
+
+    msg = (
+        "📬 " + S["fb_block"] + "\n"
+        + "━━━━━━━━━━━━━━━━━━━━\n"
+        + S["fb_cat"] + ": " + cat + "\n"
+        + S["fb_from"] + ": " + sender + "\n"
+        + S["fb_version"] + ": " + VERSION + "\n"
+        + S["fb_lang_theme"] + ": " + str(cfg.get("lang", "?")) + " / " + str(cfg.get("theme", "?")) + "\n"
+        + S["fb_device"] + ": " + device + "\n"
+        + "━━━━━━━━━━━━━━━━━━━━\n"
+        + text
+    )
+    if report:
+        msg += "\n\n" + report
+    cls()
+    print()
+    print(paint(theme, "primary", S["connecting"] + "…", bold=True))
+    try:
+        client.send_message(FEEDBACK_TARGET, msg)
+        print()
+        print(paint(theme, "ok", "  ✓ " + S["fb_sent"], bold=True))
+    except Exception as e:
+        print()
+        print(paint(theme, "err", "  ✗ " + S["err"].format(msg=friendly_error(e))))
+    print()
+    wait_enter(theme, S["press_enter"])
+
+
 def main():
     try:
         cfg = load_config()
@@ -330,7 +553,7 @@ def main():
         while True:
             idx = select_menu(
                 S["title"],
-                [S["item_info"], S["item_dialogs"], S["item_send"], S["item_exit"]],
+                [S["item_info"], S["item_dialogs"], S["item_send"], S["item_feedback"], S["item_exit"]],
                 theme,
             )
             if idx == 0:
@@ -339,6 +562,8 @@ def main():
                 show_dialogs(client, theme, S)
             elif idx == 2:
                 send_flow(client, theme, S)
+            elif idx == 3:
+                feedback_flow(client, theme, S, cfg)
             else:
                 break
 
