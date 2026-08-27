@@ -1,0 +1,22 @@
+# Приватные данные — НИКОГДА не в git
+config.json
+*.session
+*.session-journal
+.gh_device_code
+
+# Python
+__pycache__/
+*.pyc
+
+# Мусор от экспериментов с my.telegram.org
+tg_apps*.html
+tg_auth.html
+tg_cookies.txt
+tg_login_resp.html
+tg_main.js
+create_app.sh
+retry_*.sh
+
+# Системное
+.DS_Store
+*.log

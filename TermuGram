@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# TermuGram 0.2.0 — инструмент для Telegram (Termux)
+# Автор: Nyvella
+
+INSTALL_DIR="$HOME/.terminugram"
+
+# python3 обязателен
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "Ошибка: python3 не найден. Установите:  pkg install python"
+  exit 1
+fi
+
+if [ ! -d "$INSTALL_DIR" ]; then
+  echo "Ошибка: TermuGram не установлен (нет $INSTALL_DIR)."
+  echo "Склонируйте репозиторий и запустите:  bash install.sh"
+  exit 1
+fi
+
+cd "$INSTALL_DIR" || exit 1
+
+case "$1" in
+  --version|-v)
+    echo "TermuGram 0.2.0 — by Nyvella"
+    ;;
+  --help|-h)
+    echo "TermuGram — инструмент для Telegram (работает на Termux)"
+    echo
+    echo "Использование:"
+    echo "  TermuGram              главное меню (если настроен) или установка"
+    echo "  TermuGram --menu       главное меню (инфо, диалоги, отправка)"
+    echo "  TermuGram --setup      заново пройти установку/вход"
+    echo "  TermuGram --demo       показать демо интерфейса"
+    echo "  TermuGram --version    версия"
+    echo "  TermuGram --help       эта справка"
+    ;;
+  --setup)
+    shift
+    exec python3 installer.py "$@"
+    ;;
+  --demo)
+    shift
+    exec python3 demo_installer.py "$@"
+    ;;
+  --menu)
+    shift
+    exec python3 main_menu.py "$@"
+    ;;
+  *)
+    if [ ! -f config.json ] && [ ! -f tgtool_session.session ]; then
+      exec python3 installer.py "$@"
+    else
+      exec python3 main_menu.py "$@"
+    fi
+    ;;
+esac
