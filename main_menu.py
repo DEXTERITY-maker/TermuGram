@@ -35,6 +35,7 @@ FEEDBACK_TARGET = "BENJAMIN_ALL"
 MENU = {
     "ru": {
         "title": "TermuGram — главное меню",
+        "banner_sub": "главное меню",
         "item_info": "Инфо об аккаунте",
         "item_dialogs": "Мои диалоги",
         "item_send": "Отправить сообщение",
@@ -137,6 +138,7 @@ MENU = {
     },
     "en": {
         "title": "TermuGram — main menu",
+        "banner_sub": "main menu",
         "item_info": "Account info",
         "item_dialogs": "My dialogs",
         "item_send": "Send message",
@@ -239,6 +241,7 @@ MENU = {
     },
     "uk": {
         "title": "TermuGram — головне меню",
+        "banner_sub": "головне меню",
         "item_info": "Інформація про акаунт",
         "item_dialogs": "Мої діалоги",
         "item_send": "Надіслати повідомлення",
@@ -432,6 +435,41 @@ def show_update_notice(theme, S, latest):
     print(DIM + "    " + S["up_cmd_manual"] + RESET)
     print()
     wait_enter(theme, S["press_enter"])
+
+
+def center_s(s, w):
+    """Центрирует строку s в поле шириной w."""
+    s = str(s)
+    if len(s) >= w:
+        return s[:w]
+    left = (w - len(s)) // 2
+    return " " * left + s + " " * (w - len(s) - left)
+
+
+def menu_banner(theme, S):
+    """Фирменный баннер TermuGram для главного меню (блок текста)."""
+    W = 40
+    box_h = paint(theme, "primary", "╔" + "═" * W + "╗", bold=True)
+    box_b = paint(theme, "primary", "╚" + "═" * W + "╝", bold=True)
+
+    def line(inner, accent=False, dim=False):
+        body = center_s(inner, W)
+        if accent:
+            body = paint(theme, "accent", body, bold=True)
+        elif dim:
+            body = DIM + body + RESET
+        return (paint(theme, "primary", "│", bold=True)
+                + body
+                + paint(theme, "primary", "│", bold=True))
+
+    return "\n".join([
+        box_h,
+        line("T E R M U G R A M", accent=True),
+        line(S["banner_sub"]),
+        line("v" + VERSION),
+        line("by Nyvella", dim=True),
+        box_b,
+    ])
 
 
 def ask_multiline(theme, prompt, hint=None):
@@ -1042,7 +1080,7 @@ def main():
 
         while True:
             idx = select_menu(
-                S["title"] + "  (v" + VERSION + ")",
+                menu_banner(theme, S) + "\n\n" + paint(theme, "primary", S["title"], bold=True),
                 [S["item_info"], S["item_dialogs"], S["item_dl"], S["item_send"], S["item_feedback"], S["item_bot"], S["item_exit"]],
                 theme,
             )

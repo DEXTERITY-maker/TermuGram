@@ -75,6 +75,8 @@ if "Доступно обновление TermuGram!" in t:
     check(read_until(["главное меню"]), "после уведомления открылось меню")
     settle()
     t = clean_text()
+check("T E R M U G R A M" in t, "баннер TermuGram виден в меню")
+check(bool(re.search(r"v\d+\.\d+\.\d+", t)), "в баннере видна версия")
 check("Инфо об аккаунте" in t, "пункт «Инфо об аккаунте» есть")
 send("\n")
 # 2. Инфо: ждём данные аккаунта
