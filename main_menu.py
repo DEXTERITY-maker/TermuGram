@@ -20,7 +20,7 @@ from demo_installer import (
 )
 from installer import friendly_error
 
-VERSION = "0.3.0"
+VERSION = "0.4.0"
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_FILE = os.path.join(APP_DIR, "config.json")
 
@@ -93,6 +93,19 @@ MENU = {
         "fb_device_kernel": "Ядро",
         "fb_device_arch": "Архитектура",
         "fb_device_python": "Python",
+        "item_bot": "Режим бота",
+        "bot_howto": "Токен бота выдаёт @BotFather (команда /newbot). Скопируйте токен вида 123456789:ABC...",
+        "bot_token_prompt": "Введите токен бота:",
+        "bot_token_example": "пример: 123456789:ABCdefGHIjklMNOpqrsTUVwxyz",
+        "bot_token_saved": "Токен сохранён.",
+        "bot_connecting": "Подключаемся как бот",
+        "bot_bad_token": "Неверный токен бота. Проверьте его у @BotFather.",
+        "bot_title": "Режим бота: {name}",
+        "bot_info": "Инфо о боте",
+        "bot_send": "Отправить сообщение",
+        "bot_change_token": "Сменить токен",
+        "bot_send_who": "Куда отправить? (username или ID чата/канала)",
+        "bot_send_who_example": "пример: @my_channel или -1001234567890",
         "press_enter": "Нажмите Enter, чтобы продолжить",
     },
     "en": {
@@ -160,6 +173,19 @@ MENU = {
         "fb_device_kernel": "Kernel",
         "fb_device_arch": "Architecture",
         "fb_device_python": "Python",
+        "item_bot": "Bot mode",
+        "bot_howto": "Get a bot token from @BotFather (/newbot). Copy the token like 123456789:ABC...",
+        "bot_token_prompt": "Enter the bot token:",
+        "bot_token_example": "e.g. 123456789:ABCdefGHIjklMNOpqrsTUVwxyz",
+        "bot_token_saved": "Token saved.",
+        "bot_connecting": "Connecting as bot",
+        "bot_bad_token": "Invalid bot token. Check it with @BotFather.",
+        "bot_title": "Bot mode: {name}",
+        "bot_info": "Bot info",
+        "bot_send": "Send message",
+        "bot_change_token": "Change token",
+        "bot_send_who": "Send to? (username or chat/channel ID)",
+        "bot_send_who_example": "e.g. @my_channel or -1001234567890",
         "press_enter": "Press Enter to continue",
     },
     "uk": {
@@ -227,6 +253,19 @@ MENU = {
         "fb_device_kernel": "Ядро",
         "fb_device_arch": "Архітектура",
         "fb_device_python": "Python",
+        "item_bot": "Режим бота",
+        "bot_howto": "Токен бота видає @BotFather (команда /newbot). Скопіюйте токен виду 123456789:ABC...",
+        "bot_token_prompt": "Введіть токен бота:",
+        "bot_token_example": "приклад: 123456789:ABCdefGHIjklMNOpqrsTUVwxyz",
+        "bot_token_saved": "Токен збережено.",
+        "bot_connecting": "Підключаємось як бот",
+        "bot_bad_token": "Невірний токен бота. Перевірте його у @BotFather.",
+        "bot_title": "Режим бота: {name}",
+        "bot_info": "Інформація про бота",
+        "bot_send": "Надіслати повідомлення",
+        "bot_change_token": "Змінити токен",
+        "bot_send_who": "Куди надіслати? (username або ID чату/каналу)",
+        "bot_send_who_example": "приклад: @my_channel або -1001234567890",
         "press_enter": "Натисніть Enter, щоб продовжити",
     },
 }
@@ -526,6 +565,161 @@ def feedback_flow(client, theme, S, cfg):
     wait_enter(theme, S["press_enter"])
 
 
+def save_config(cfg):
+    import json
+    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, ensure_ascii=False, indent=2)
+    os.chmod(CONFIG_FILE, 0o600)
+
+
+def bot_error_msg(e, S):
+    """Понятное сообщение об ошибке бота."""
+    msg = str(e)
+    name = type(e).__name__
+    if "access token" in msg.lower() or "ACCESS_TOKEN_INVALID" in msg or "AccessTokenInvalidError" in name:
+        return S["bot_bad_token"]
+    return S["err"].format(msg=friendly_error(e))
+
+
+def bot_connect(token, api_id, api_hash):
+    """Подключает бота по токену. Возвращает (client, me) или (None, None)."""
+    from telethon.sync import TelegramClient
+    bot = TelegramClient(os.path.join(APP_DIR, "tgtool_bot"), api_id, api_hash)
+    try:
+        bot.connect()
+        bot.start(bot_token=token)
+        me = bot.get_me()
+        return bot, me
+    except Exception:
+        try:
+            bot.disconnect()
+        except Exception:
+            pass
+        return None, None
+
+
+def bot_flow(theme, S, cfg):
+    """Режим бота: токен -> подключение -> инфо/отправка/смена токена."""
+    from telethon.sync import TelegramClient  # noqa: F401 (для типов)
+
+    api_id = cfg.get("api_id")
+    api_hash = cfg.get("api_hash")
+    if not api_id or not api_hash:
+        print()
+        print("  ✗ " + S["err"].format(msg="нет API-ключей в config.json"))
+        print()
+        return
+
+    token = str(cfg.get("bot_token", "")).strip()
+    if not token:
+        cls()
+        print()
+        print(paint(theme, "primary", S["item_bot"], bold=True))
+        print(DIM + "   " + S["bot_howto"] + RESET)
+        print()
+        token = ask_text(theme, S["bot_token_prompt"], S["bot_token_example"]).strip()
+        if not token:
+            return
+
+    cls()
+    print()
+    print(paint(theme, "primary", S["bot_connecting"] + "…", bold=True))
+    bot, me = bot_connect(token, api_id, api_hash)
+    if bot is None:
+        print()
+        print(paint(theme, "err", "  ✗ " + S["bot_bad_token"]))
+        print()
+        wait_enter(theme, S["press_enter"])
+        return
+
+    if "bot_token" not in cfg:
+        cfg["bot_token"] = token
+        save_config(cfg)
+        print()
+        print(paint(theme, "ok", "  ✓ " + S["bot_token_saved"], bold=True))
+        print()
+        wait_enter(theme, S["press_enter"])
+
+    while True:
+        name = (me.first_name or "?").strip()
+        idx = select_menu(
+            S["bot_title"].format(name=name),
+            [S["bot_info"], S["bot_send"], S["bot_change_token"], S["back"]],
+            theme,
+        )
+        if idx == 0:
+            cls()
+            print()
+            print(paint(theme, "primary", S["bot_info"], bold=True))
+            print()
+            rows = [
+                (S["info_name"], me.first_name or "?"),
+                (S["info_username"], "@" + me.username if me.username else "—"),
+                (S["info_id"], str(me.id)),
+            ]
+            for k, v in rows:
+                print("  " + paint(theme, "primary", k + ":") + "  " + paint(theme, "fg", v))
+            print()
+            wait_enter(theme, S["press_enter"])
+        elif idx == 1:
+            target = ask_text(theme, S["bot_send_who"], S["bot_send_who_example"])
+            if not target:
+                continue
+            text = ask_text(theme, S["send_text_prompt"])
+            if not text.strip():
+                continue
+            confirm = select_menu(S["send_confirm"], [S["yes"], S["no"]], theme)
+            if confirm == 1:
+                continue
+            cls()
+            print()
+            print(paint(theme, "primary", S["bot_connecting"] + "…", bold=True))
+            try:
+                bot.send_message(target.strip(), text.strip())
+                print()
+                print(paint(theme, "ok", "  ✓ " + S["sent_ok"], bold=True))
+            except Exception as e:
+                print()
+                print(paint(theme, "err", "  ✗ " + bot_error_msg(e, S)))
+            print()
+            wait_enter(theme, S["press_enter"])
+        elif idx == 2:
+            try:
+                bot.disconnect()
+            except Exception:
+                pass
+            try:
+                os.remove(os.path.join(APP_DIR, "tgtool_bot.session"))
+            except OSError:
+                pass
+            new_token = ask_text(theme, S["bot_token_prompt"], S["bot_token_example"]).strip()
+            if not new_token:
+                return
+            cls()
+            print()
+            print(paint(theme, "primary", S["bot_connecting"] + "…", bold=True))
+            bot, me = bot_connect(new_token, api_id, api_hash)
+            if bot is None:
+                print()
+                print(paint(theme, "err", "  ✗ " + S["bot_bad_token"]))
+                print()
+                wait_enter(theme, S["press_enter"])
+                return
+            cfg["bot_token"] = new_token
+            save_config(cfg)
+            print()
+            print(paint(theme, "ok", "  ✓ " + S["bot_token_saved"], bold=True))
+            print()
+            wait_enter(theme, S["press_enter"])
+        else:
+            break
+
+    try:
+        bot.disconnect()
+    except Exception:
+        pass
+
+
 def main():
     try:
         cfg = load_config()
@@ -553,7 +747,7 @@ def main():
         while True:
             idx = select_menu(
                 S["title"],
-                [S["item_info"], S["item_dialogs"], S["item_send"], S["item_feedback"], S["item_exit"]],
+                [S["item_info"], S["item_dialogs"], S["item_send"], S["item_feedback"], S["item_bot"], S["item_exit"]],
                 theme,
             )
             if idx == 0:
@@ -564,6 +758,8 @@ def main():
                 send_flow(client, theme, S)
             elif idx == 3:
                 feedback_flow(client, theme, S, cfg)
+            elif idx == 4:
+                bot_flow(theme, S, cfg)
             else:
                 break
 

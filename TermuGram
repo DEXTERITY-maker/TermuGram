@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# TermuGram 0.3.0 — инструмент для Telegram (Termux)
+# TermuGram 0.4.0 — инструмент для Telegram (Termux)
 # Автор: Nyvella
 
 INSTALL_DIR="$HOME/.terminugram"
@@ -20,14 +20,14 @@ cd "$INSTALL_DIR" || exit 1
 
 case "$1" in
   --version|-v)
-    echo "TermuGram 0.3.0 — by Nyvella"
+    echo "TermuGram 0.4.0 — by Nyvella"
     ;;
   --help|-h)
     echo "TermuGram — инструмент для Telegram (работает на Termux)"
     echo
     echo "Использование:"
     echo "  TermuGram              главное меню (если настроен) или установка"
-    echo "  TermuGram --menu       главное меню (инфо, диалоги, отправка, обратная связь)"
+    echo "  TermuGram --menu       главное меню (инфо, диалоги, отправка, фидбек, бот)"
     echo "  TermuGram --setup      заново пройти установку/вход"
     echo "  TermuGram --demo       показать демо интерфейса"
     echo "  TermuGram --version    версия"
