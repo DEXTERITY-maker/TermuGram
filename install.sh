@@ -31,7 +31,8 @@ fi
 echo "[3/4] копируем файлы в $INSTALL_DIR"
 mkdir -p "$INSTALL_DIR"
 cp "$SRC_DIR/demo_installer.py" "$SRC_DIR/installer.py" \
-   "$SRC_DIR/main_menu.py" "$SRC_DIR/requirements.txt" "$SRC_DIR/TermuGram" "$INSTALL_DIR/"
+   "$SRC_DIR/main_menu.py" "$SRC_DIR/version.py" \
+   "$SRC_DIR/requirements.txt" "$SRC_DIR/TermuGram" "$INSTALL_DIR/"
 
 # 4. команда в PATH
 echo "[4/4] создаём команду TermuGram в $BIN_DIR"

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# TermuGram 0.4.0 — инструмент для Telegram (Termux)
+# TermuGram — инструмент для Telegram (Termux)
 # Автор: Nyvella
 
 INSTALL_DIR="$HOME/.terminugram"
@@ -18,16 +18,22 @@ fi
 
 cd "$INSTALL_DIR" || exit 1
 
+# Версия — из version.py (единый источник)
+VERSION="0.0.0"
+if [ -f "$INSTALL_DIR/version.py" ]; then
+  VERSION=$(python3 -c "from version import VERSION; print(VERSION)" 2>/dev/null) || VERSION="0.0.0"
+fi
+
 case "$1" in
   --version|-v)
-    echo "TermuGram 0.4.0 — by Nyvella"
+    echo "TermuGram $VERSION — by Nyvella"
     ;;
   --help|-h)
     echo "TermuGram — инструмент для Telegram (работает на Termux)"
     echo
     echo "Использование:"
     echo "  TermuGram              главное меню (если настроен) или установка"
-    echo "  TermuGram --menu       главное меню (инфо, диалоги, отправка, фидбек, бот)"
+    echo "  TermuGram --menu       главное меню (инфо, диалоги, медиа, отправка, фидбек, бот)"
     echo "  TermuGram --setup      заново пройти установку/вход"
     echo "  TermuGram --demo       показать демо интерфейса"
     echo "  TermuGram --version    версия"

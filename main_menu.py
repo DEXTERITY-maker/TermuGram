@@ -9,20 +9,25 @@ TermuGram — главное меню (основной функционал).
 Работает после установки (есть config.json + сессия):
   • Инфо об аккаунте
   • Мои диалоги (первые 15) + последние сообщения выбранного
+  • Скачивание медиа (фото/видео/голосовые/файлы) из диалога
   • Отправка сообщения: себе, из списка диалогов или по username/телефону
 """
 import os
 import platform
+import re
 import sys
 
 from demo_installer import (
     THEMES, paint, cls, select_menu, ask_text, wait_enter, RESET, DIM,
 )
 from installer import friendly_error
+from version import VERSION
 
-VERSION = "0.4.0"
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 CONFIG_FILE = os.path.join(APP_DIR, "config.json")
+
+# Куда сохраняются скачанные медиа
+MEDIA_DIR = os.path.join(os.path.expanduser("~"), "TermuGramDownloads")
 
 # Куда приходит обратная связь из меню (username разработчика)
 FEEDBACK_TARGET = "BENJAMIN_ALL"
@@ -49,6 +54,23 @@ MENU = {
         "no_msgs": "В этом диалоге пока нет сообщений",
         "media": "(медиа)",
         "unread": " ({n} новых)",
+        "item_dl": "Скачать медиа",
+        "dl_title": "Скачать медиа — выберите диалог",
+        "dl_scan": "Ищем медиа в диалоге",
+        "dl_none": "Медиа не найдено (просмотрены последние 200 сообщений)",
+        "dl_pick": "Медиа в диалоге: {name} (выберите одно или скачайте всё)",
+        "dl_all": "Скачать всё ({n})",
+        "dl_confirm": "Скачать выбранное?",
+        "dl_start": "Скачиваем",
+        "dl_done": "Скачано: {ok} из {n}\n  Папка: {dir}",
+        "dl_kind_photo": "фото",
+        "dl_kind_video": "видео",
+        "dl_kind_voice": "голосовое",
+        "dl_kind_audio": "аудио",
+        "dl_kind_video_note": "кружок",
+        "dl_kind_sticker": "стикер",
+        "dl_kind_document": "файл",
+        "dl_kind_other": "медиа",
         "send_who": "Кому отправить?",
         "send_to_self": "Себе (Saved Messages)",
         "send_to_dialog": "Из списка диалогов",
@@ -129,6 +151,23 @@ MENU = {
         "no_msgs": "No messages in this dialog yet",
         "media": "(media)",
         "unread": " ({n} new)",
+        "item_dl": "Download media",
+        "dl_title": "Download media — pick a dialog",
+        "dl_scan": "Looking for media in the dialog",
+        "dl_none": "No media found (last 200 messages checked)",
+        "dl_pick": "Media in: {name} (pick one or download all)",
+        "dl_all": "Download all ({n})",
+        "dl_confirm": "Download selected?",
+        "dl_start": "Downloading",
+        "dl_done": "Downloaded: {ok} of {n}\n  Folder: {dir}",
+        "dl_kind_photo": "photo",
+        "dl_kind_video": "video",
+        "dl_kind_voice": "voice",
+        "dl_kind_audio": "audio",
+        "dl_kind_video_note": "video note",
+        "dl_kind_sticker": "sticker",
+        "dl_kind_document": "file",
+        "dl_kind_other": "media",
         "send_who": "Send to whom?",
         "send_to_self": "Me (Saved Messages)",
         "send_to_dialog": "From my dialogs",
@@ -209,6 +248,23 @@ MENU = {
         "no_msgs": "У цьому діалозі поки немає повідомлень",
         "media": "(медіа)",
         "unread": " ({n} нових)",
+        "item_dl": "Завантажити медіа",
+        "dl_title": "Завантажити медіа — оберіть діалог",
+        "dl_scan": "Шукаємо медіа в діалозі",
+        "dl_none": "Медіа не знайдено (переглянуто останні 200 повідомлень)",
+        "dl_pick": "Медіа в діалозі: {name} (оберіть одне або завантажте все)",
+        "dl_all": "Завантажити все ({n})",
+        "dl_confirm": "Завантажити вибране?",
+        "dl_start": "Завантажуємо",
+        "dl_done": "Завантажено: {ok} з {n}\n  Папка: {dir}",
+        "dl_kind_photo": "фото",
+        "dl_kind_video": "відео",
+        "dl_kind_voice": "голосове",
+        "dl_kind_audio": "аудіо",
+        "dl_kind_video_note": "кружечок",
+        "dl_kind_sticker": "стікер",
+        "dl_kind_document": "файл",
+        "dl_kind_other": "медіа",
         "send_who": "Кому надіслати?",
         "send_to_self": "Собі (Saved Messages)",
         "send_to_dialog": "Зі списку діалогів",
@@ -439,6 +495,152 @@ def show_dialogs(client, theme, S):
     wait_enter(theme, S["press_enter"])
 
 
+SKIP_MEDIA_TYPES = {
+    "MessageMediaEmpty", "MessageMediaGeo", "MessageMediaGeoLive",
+    "MessageMediaVenue", "MessageMediaContact", "MessageMediaPoll",
+    "MessageMediaDice", "MessageMediaGame", "MessageMediaGiveaway",
+    "MessageMediaGiveawayResults",
+}
+
+MEDIA_ICONS = {
+    "photo": "🖼", "video": "🎬", "voice": "🎤", "audio": "🎵",
+    "video_note": "🎞", "sticker": "🃏", "document": "📄", "other": "📎",
+}
+
+
+def media_kind(m):
+    """Тип медиа сообщения: photo/video/voice/audio/video_note/sticker/document/other."""
+    for attr, kind in (
+        ("photo", "photo"), ("video", "video"), ("voice", "voice"),
+        ("audio", "audio"), ("video_note", "video_note"),
+        ("sticker", "sticker"), ("document", "document"),
+    ):
+        if getattr(m, attr, None):
+            return kind
+    return "other"
+
+
+def fmt_size(n):
+    if not n:
+        return ""
+    if n >= 1024 * 1024:
+        return f"{n / 1024 / 1024:.1f} МБ"
+    if n >= 1024:
+        return f"{n / 1024:.0f} КБ"
+    return f"{n} Б"
+
+
+def media_label(m, S):
+    """Строка для меню: дата, иконка, тип, имя файла, размер."""
+    kind = media_kind(m)
+    icon = MEDIA_ICONS.get(kind, "📎")
+    kind_name = S.get("dl_kind_" + kind, S.get("dl_kind_other", kind))
+    fname = getattr(getattr(m, "file", None), "name", None) or ""
+    size = getattr(getattr(m, "file", None), "size", None)
+    label = f"{fmt_date(m.date)}  {icon} {kind_name}"
+    if fname:
+        label += "  " + fname
+    if size:
+        label += "  (" + fmt_size(size) + ")"
+    if len(label) > 66:
+        label = label[:65] + "…"
+    return label
+
+
+def safe_dir_name(name):
+    """Имя папки из имени диалога (без недопустимых символов)."""
+    s = re.sub(r'[\\/:*?"<>|]', "_", (name or "").strip()).strip(" .")
+    return s or "dialog"
+
+
+def media_filename(m):
+    """Имя файла для скачивания: дата_тип или дата_имя_файла."""
+    kind = media_kind(m)
+    try:
+        date = m.date.strftime("%d-%m_%H-%M")
+    except Exception:
+        date = "no_date"
+    fname = getattr(getattr(m, "file", None), "name", None) or ""
+    if not fname:
+        ext = {"photo": ".jpg", "voice": ".ogg", "video_note": ".mp4",
+               "video": ".mp4", "audio": ".mp3", "sticker": ".webp"}.get(kind, "")
+        fname = kind + ext
+    else:
+        fname = re.sub(r'[\\/:*?"<>|]', "_", fname)
+    return f"{date}_{fname}"
+
+
+def unique_path(directory, fname):
+    """Путь без перезаписи: при совпадении добавляет _1, _2..."""
+    path = os.path.join(directory, fname)
+    if not os.path.exists(path):
+        return path
+    base, ext = os.path.splitext(fname)
+    i = 1
+    while os.path.exists(os.path.join(directory, f"{base}_{i}{ext}")):
+        i += 1
+    return os.path.join(directory, f"{base}_{i}{ext}")
+
+
+def download_flow(client, theme, S):
+    """Скачивание медиа: диалог -> список медиа -> одно или всё."""
+    picked = pick_dialog(client, theme, S, S["dl_title"])
+    if picked is None:
+        return
+    entity, name = picked
+
+    cls()
+    print()
+    print(paint(theme, "primary", S["dl_scan"] + "…", bold=True))
+    items = []
+    for m in client.iter_messages(entity, limit=200):
+        if not m.media or getattr(m.media, "webpage", None):
+            continue
+        if type(m.media).__name__ in SKIP_MEDIA_TYPES:
+            continue
+        items.append(m)
+        if len(items) >= 20:
+            break
+
+    if not items:
+        print()
+        print(paint(theme, "warn", "  ! " + S["dl_none"]))
+        print()
+        wait_enter(theme, S["press_enter"])
+        return
+
+    labels = [media_label(m, S) for m in items]
+    options = labels + [S["dl_all"].format(n=len(items)), S["back"]]
+    idx = select_menu(S["dl_pick"].format(name=name), options, theme)
+    if idx >= len(items) + 1:  # «Назад»
+        return
+    selected = items if idx == len(items) else [items[idx]]
+
+    confirm = select_menu(S["dl_confirm"], [S["yes"], S["no"]], theme)
+    if confirm == 1:
+        return
+
+    out_dir = os.path.join(MEDIA_DIR, safe_dir_name(name))
+    os.makedirs(out_dir, exist_ok=True)
+    cls()
+    print()
+    print(paint(theme, "primary", S["dl_start"] + "…", bold=True))
+    ok_count = 0
+    for m in selected:
+        fname = media_filename(m)
+        path = unique_path(out_dir, fname)
+        try:
+            client.download_media(m, file=path)
+            ok_count += 1
+            print("  " + paint(theme, "ok", "✓ " + fname))
+        except Exception as e:
+            print("  " + paint(theme, "err", "✗ " + fname + " — " + friendly_error(e)))
+    print()
+    print(paint(theme, "ok", "  " + S["dl_done"].format(ok=ok_count, n=len(selected), dir=out_dir), bold=True))
+    print()
+    wait_enter(theme, S["press_enter"])
+
+
 def send_flow(client, theme, S):
     target_opt = select_menu(
         S["send_who"],
@@ -582,20 +784,20 @@ def bot_error_msg(e, S):
 
 
 def bot_connect(token, api_id, api_hash):
-    """Подключает бота по токену. Возвращает (client, me) или (None, None)."""
+    """Подключает бота по токену. Возвращает (client, me) или (None, error)."""
     from telethon.sync import TelegramClient
     bot = TelegramClient(os.path.join(APP_DIR, "tgtool_bot"), api_id, api_hash)
     try:
         bot.connect()
         bot.start(bot_token=token)
         me = bot.get_me()
-        return bot, me
-    except Exception:
+        return bot, me, None
+    except Exception as e:
         try:
             bot.disconnect()
         except Exception:
             pass
-        return None, None
+        return None, None, e
 
 
 def bot_flow(theme, S, cfg):
@@ -624,10 +826,10 @@ def bot_flow(theme, S, cfg):
     cls()
     print()
     print(paint(theme, "primary", S["bot_connecting"] + "…", bold=True))
-    bot, me = bot_connect(token, api_id, api_hash)
+    bot, me, err = bot_connect(token, api_id, api_hash)
     if bot is None:
         print()
-        print(paint(theme, "err", "  ✗ " + S["bot_bad_token"]))
+        print(paint(theme, "err", "  ✗ " + bot_error_msg(err, S)))
         print()
         wait_enter(theme, S["press_enter"])
         return
@@ -684,27 +886,41 @@ def bot_flow(theme, S, cfg):
             print()
             wait_enter(theme, S["press_enter"])
         elif idx == 2:
+            new_token = ask_text(theme, S["bot_token_prompt"], S["bot_token_example"]).strip()
+            if not new_token:
+                continue
             try:
                 bot.disconnect()
             except Exception:
                 pass
+            sess_path = os.path.join(APP_DIR, "tgtool_bot.session")
+            bak_path = sess_path + ".bak"
             try:
-                os.remove(os.path.join(APP_DIR, "tgtool_bot.session"))
+                os.replace(sess_path, bak_path)
             except OSError:
                 pass
-            new_token = ask_text(theme, S["bot_token_prompt"], S["bot_token_example"]).strip()
-            if not new_token:
-                return
             cls()
             print()
             print(paint(theme, "primary", S["bot_connecting"] + "…", bold=True))
-            bot, me = bot_connect(new_token, api_id, api_hash)
+            bot, me, err = bot_connect(new_token, api_id, api_hash)
             if bot is None:
+                try:
+                    os.remove(sess_path)
+                except OSError:
+                    pass
+                try:
+                    os.replace(bak_path, sess_path)
+                except OSError:
+                    pass
                 print()
-                print(paint(theme, "err", "  ✗ " + S["bot_bad_token"]))
+                print(paint(theme, "err", "  ✗ " + bot_error_msg(err, S)))
                 print()
                 wait_enter(theme, S["press_enter"])
                 return
+            try:
+                os.remove(bak_path)
+            except OSError:
+                pass
             cfg["bot_token"] = new_token
             save_config(cfg)
             print()
@@ -735,7 +951,10 @@ def main():
         theme = theme_by_id(cfg.get("theme", "dark"))
 
         from telethon.sync import TelegramClient
-        client = TelegramClient(cfg["session"], cfg["api_id"], cfg["api_hash"])
+        session_file = cfg["session"]
+        if not os.path.isabs(session_file):
+            session_file = os.path.join(APP_DIR, session_file)
+        client = TelegramClient(session_file, cfg["api_id"], cfg["api_hash"])
         client.connect()
         if not client.is_user_authorized():
             print()
@@ -747,7 +966,7 @@ def main():
         while True:
             idx = select_menu(
                 S["title"],
-                [S["item_info"], S["item_dialogs"], S["item_send"], S["item_feedback"], S["item_bot"], S["item_exit"]],
+                [S["item_info"], S["item_dialogs"], S["item_dl"], S["item_send"], S["item_feedback"], S["item_bot"], S["item_exit"]],
                 theme,
             )
             if idx == 0:
@@ -755,10 +974,12 @@ def main():
             elif idx == 1:
                 show_dialogs(client, theme, S)
             elif idx == 2:
-                send_flow(client, theme, S)
+                download_flow(client, theme, S)
             elif idx == 3:
-                feedback_flow(client, theme, S, cfg)
+                send_flow(client, theme, S)
             elif idx == 4:
+                feedback_flow(client, theme, S, cfg)
+            elif idx == 5:
                 bot_flow(theme, S, cfg)
             else:
                 break
